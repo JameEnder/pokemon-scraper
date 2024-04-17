@@ -121,7 +121,7 @@ const pokemonOutputSchema = scope({
 	$type: {
 		id: 'number',
 		name: 'string',
-		abilityCount: 'string',
+		abilityCount: 'number',
 		stats: 'stat[]'
 	},
 
@@ -132,44 +132,49 @@ const pokemonOutputSchema = scope({
 	}
 }).compile()
 
-let IOData: KeyValueStore | undefined = undefined;
-let IOSchemas: KeyValueStore | undefined = undefined;
 
 const exportInputSchemas = async () => {
-	const inputSchemasJson: Record<string, any> = {}
+	const existingSchemas: Record<string, Record<string, any>> = await KeyValueStore.getValue('IO_SCHEMAS') ?? {}
+
+	existingSchemas['INPUT'] = {}
 
 	for (const key of Object.keys(inputSchemas)) {
-		inputSchemasJson[key] = inputSchemas[key].$type.scope.aliases
+		existingSchemas['INPUT'][key] = inputSchemas[key].$type.scope.aliases
 	}
 
-	await IOSchemas?.setValue('INPUT-SCHEMAS', inputSchemasJson)
+	await KeyValueStore.setValue('IO_SCHEMAS', existingSchemas)
 }
 
 
 const exportOutputSchemas = async () => {
-	await IOSchemas?.setValue('OUTPUT-SCHEMAS', [
-		JSON.stringify(pokemonOutputSchema.$type.scope.aliases)
-	])
+	const existingSchemas: Record<string, any[]> = await KeyValueStore.getValue('IO_SCHEMAS') ?? {}
+
+	existingSchemas['OUTPUT'] = [
+		pokemonOutputSchema.$type.scope.aliases
+	];
+
+	await KeyValueStore.setValue('IO_SCHEMAS', existingSchemas)
 }
 
 
 export const exportInputData = async (label = 'unknown', data: any) => {
-	const existingData: any[] = (await IOData?.getValue(label))!;
+	const existingData: Record<string, any[]> = await KeyValueStore.getValue('IO_DATA') ?? {};
 
-	existingData.push(data);
+	existingData[label].push(data);
 
-	await IOData?.setValue(label, existingData)
+	await KeyValueStore.setValue('IO_DATA', existingData)
 } 
 
 export const testIOInitialize = async () => {
-	IOData = await KeyValueStore.open('IO-INPUT-DATA');
-	IOSchemas = await KeyValueStore.open('IO-SCHEMAS');
-
 	await exportInputSchemas();
 	await exportOutputSchemas();
 
 	for (const label of Object.keys(labels)) {
-		await IOData?.setValue(label, []);
+		const previousData: Record<string, any[]> = await KeyValueStore.getValue('IO_DATA') ?? {}
+
+		previousData[label] = [];
+
+		await KeyValueStore.setValue('IO_DATA', previousData);
 	}
 }
 

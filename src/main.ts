@@ -26,11 +26,11 @@ router.addHandler(labels.LIST, async ({ json, request, crawler }) => {
 	
 	const data: ListResponse = json;	
 
-	for (const result of data.results) {
+	for (const result of data.results.slice(0, 10)) {
 		await crawler.addRequests([{
 			url: result.url,
 			label: labels.POKEMON
-		}])
+		}], { forefront: true })
 	}
 })
 
@@ -57,7 +57,6 @@ router.addHandler(labels.POKEMON, async ({ json, request, log }) => {
 
 const crawler = new HttpCrawler({
 	proxyConfiguration: await Actor.createProxyConfiguration(),
-	maxRequestsPerCrawl: 10,
 	requestHandler: router	
 })
 
